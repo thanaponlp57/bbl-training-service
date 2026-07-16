@@ -3,6 +3,7 @@ package com.thanapon.bbl_training_service.service.imp;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
 import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
@@ -43,8 +44,11 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public UserResponseDto updateUserById(long id, UserUpdateRequestDto userUpdateRequestDto) {
-        final UserEntity userEntity = findUserOrThrow(id);
+        final UserEntity userEntity = userRepository
+                .findByIdWithLock(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
         userMapper.updateEntityFromDto(userUpdateRequestDto, userEntity);
 
         return userMapper.toResponseDto(userRepository.save(userEntity));
