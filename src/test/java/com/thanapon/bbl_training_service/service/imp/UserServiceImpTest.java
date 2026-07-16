@@ -8,12 +8,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.thanapon.bbl_training_service.dto.request.UserRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.NotFoundException;
+import com.thanapon.bbl_training_service.mapper.UserMapper;
+import com.thanapon.bbl_training_service.mapper.UserMapperImpl;
 import com.thanapon.bbl_training_service.repository.UserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +31,9 @@ class UserServiceImpTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Spy
+    private UserMapper userMapper = new UserMapperImpl();
 
     @InjectMocks
     private UserServiceImp userServiceImp;
@@ -65,7 +72,7 @@ class UserServiceImpTest {
 
     @Test
     void createUser_shouldSaveAndReturnNewUser() {
-        UserRequestDto requestDto = new UserRequestDto(
+        UserCreateRequestDto requestDto = new UserCreateRequestDto(
                 "Leanne Graham", "Bret", "leanne@example.com", "1-770-736-8031", "hildegard.org");
         given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
             UserEntity saved = invocation.getArgument(0);
@@ -79,5 +86,32 @@ class UserServiceImpTest {
         assertThat(userEntityCaptor.getValue().getUsername()).isEqualTo("Bret");
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getUsername()).isEqualTo("Bret");
+    }
+
+    @Test
+    void updateUserById_shouldUpdateFieldsAndKeepId_whenUserExists() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(existingUser()));
+        given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+        UserUpdateRequestDto requestDto = new UserUpdateRequestDto(
+                "Leanne G. Updated", "Bret", "leanne.updated@example.com", "099-999-9999", "updated.org");
+
+        UserResponseDto result = userServiceImp.updateUserById(1L, requestDto);
+
+        verify(userRepository).save(userEntityCaptor.capture());
+        assertThat(userEntityCaptor.getValue().getId()).isEqualTo(1L);
+        assertThat(userEntityCaptor.getValue().getName()).isEqualTo("Leanne G. Updated");
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getEmail()).isEqualTo("leanne.updated@example.com");
+        assertThat(result.getWebsite()).isEqualTo("updated.org");
+    }
+
+    @Test
+    void updateUserById_shouldThrowNotFoundException_whenUserDoesNotExist() {
+        given(userRepository.findById(99L)).willReturn(Optional.empty());
+        UserUpdateRequestDto requestDto = new UserUpdateRequestDto(
+                "name", "username", "email@example.com", "phone", "website");
+
+        assertThatThrownBy(() -> userServiceImp.updateUserById(99L, requestDto))
+                .isInstanceOf(NotFoundException.class);
     }
 }

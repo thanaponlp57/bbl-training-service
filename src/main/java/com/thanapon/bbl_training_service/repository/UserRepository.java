@@ -4,4 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.thanapon.bbl_training_service.entity.UserEntity;
 
-public interface UserRepository extends JpaRepository<UserEntity, Long> {}
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+
+    boolean existsByUsername(String username);
+
+    boolean existsByUsernameAndIdNot(String username, long id);
+}

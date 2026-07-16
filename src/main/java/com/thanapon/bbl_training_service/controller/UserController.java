@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.thanapon.bbl_training_service.dto.request.UserRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.ApiResponse;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
 import com.thanapon.bbl_training_service.service.UserService;
@@ -38,10 +39,10 @@ public class UserController {
                 .body(ApiResponse.success("Users retrieved successfully", userResponseDtos));
     }
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable long userId) {
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable long id) {
 
-        final UserResponseDto userResponseDto = userService.getUserById(userId);
+        final UserResponseDto userResponseDto = userService.getUserById(id);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -50,31 +51,31 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponseDto>> createUser(
-            @Valid @RequestBody UserRequestDto userRequestDto) {
+            @Valid @RequestBody UserCreateRequestDto userCreateRequestDto) {
 
-        final UserResponseDto userResponseDto = userService.createUser(userRequestDto);
+        final UserResponseDto userResponseDto = userService.createUser(userCreateRequestDto);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Create a new user.", userResponseDto));
     }
 
-    @PutMapping("/{userId}")
-    public ResponseEntity<ApiResponse<UserResponseDto>> updateUser(
-            @PathVariable long userId,
-            @Valid @RequestBody UserRequestDto userRequestDto) {
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponseDto>> updateUserById(
+            @PathVariable long id,
+            @Valid @RequestBody UserUpdateRequestDto userUpdateRequestDto) {
 
-        final UserResponseDto userResponseDto = userService.updateUser(userId, userRequestDto);
+        final UserResponseDto userResponseDto = userService.updateUserById(id, userUpdateRequestDto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.success("Update details of an existing user.", userResponseDto));
     }
 
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable long userId) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUserById(@PathVariable long id) {
 
-        userService.deleteUser(userId);
+        userService.deleteUserById(id);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

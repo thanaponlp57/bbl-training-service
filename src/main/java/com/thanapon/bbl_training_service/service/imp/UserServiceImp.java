@@ -4,10 +4,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.thanapon.bbl_training_service.dto.request.UserRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.NotFoundException;
+import com.thanapon.bbl_training_service.mapper.UserMapper;
 import com.thanapon.bbl_training_service.repository.UserRepository;
 import com.thanapon.bbl_training_service.service.UserService;
 
@@ -18,62 +20,44 @@ import lombok.RequiredArgsConstructor;
 public class UserServiceImp implements UserService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll()
                 .stream()
-                .map(this::toResponseDto)
+                .map(userMapper::toResponseDto)
                 .toList();
     }
 
     @Override
-    public UserResponseDto getUserById(long userId) {
-        return toResponseDto(findUserOrThrow(userId));
+    public UserResponseDto getUserById(long id) {
+        return userMapper.toResponseDto(findUserOrThrow(id));
     }
 
     @Override
-    public UserResponseDto createUser(UserRequestDto userRequestDto) {
-        final UserEntity userEntity = new UserEntity();
-        applyRequestDto(userEntity, userRequestDto);
+    public UserResponseDto createUser(UserCreateRequestDto userCreateRequestDto) {
+        final UserEntity userEntity = userMapper.toEntity(userCreateRequestDto);
 
-        return toResponseDto(userRepository.save(userEntity));
+        return userMapper.toResponseDto(userRepository.save(userEntity));
     }
 
     @Override
-    public UserResponseDto updateUser(long userId, UserRequestDto userRequestDto) {
-        final UserEntity userEntity = findUserOrThrow(userId);
-        applyRequestDto(userEntity, userRequestDto);
+    public UserResponseDto updateUserById(long id, UserUpdateRequestDto userUpdateRequestDto) {
+        final UserEntity userEntity = findUserOrThrow(id);
+        userMapper.updateEntityFromDto(userUpdateRequestDto, userEntity);
 
-        return toResponseDto(userRepository.save(userEntity));
+        return userMapper.toResponseDto(userRepository.save(userEntity));
     }
 
     @Override
-    public void deleteUser(long userId) {
-        userRepository.delete(findUserOrThrow(userId));
+    public void deleteUserById(long id) {
+        userRepository.delete(findUserOrThrow(id));
     }
 
-    private UserEntity findUserOrThrow(long userId) {
+    private UserEntity findUserOrThrow(long id) {
         return userRepository
-                .findById(userId)
+                .findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-    }
-
-    private void applyRequestDto(UserEntity userEntity, UserRequestDto userRequestDto) {
-        userEntity.setName(userRequestDto.getName());
-        userEntity.setUsername(userRequestDto.getUsername());
-        userEntity.setEmail(userRequestDto.getEmail());
-        userEntity.setPhone(userRequestDto.getPhone());
-        userEntity.setWebsite(userRequestDto.getWebsite());
-    }
-
-    private UserResponseDto toResponseDto(UserEntity userEntity) {
-        return new UserResponseDto(
-                userEntity.getId(),
-                userEntity.getName(),
-                userEntity.getUsername(),
-                userEntity.getEmail(),
-                userEntity.getPhone(),
-                userEntity.getWebsite());
     }
 }

@@ -2,7 +2,8 @@ package com.thanapon.bbl_training_service.service;
 
 import java.util.List;
 
-import com.thanapon.bbl_training_service.dto.request.UserRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
+import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
 
 public interface UserService {
@@ -10,9 +11,9 @@ public interface UserService {
 
     UserResponseDto getUserById(long userId);
 
-    UserResponseDto createUser(UserRequestDto userRequestDto);
+    UserResponseDto createUser(UserCreateRequestDto userCreateRequestDto);
 
-    UserResponseDto updateUser(long userId, UserRequestDto userRequestDto);
+    UserResponseDto updateUserById(long userId, UserUpdateRequestDto userUpdateRequestDto);
 
-    void deleteUser(long userId);
+    void deleteUserById(long userId);
 }
