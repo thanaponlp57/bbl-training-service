@@ -13,6 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -49,6 +50,7 @@ public class UserEntity {
     @Column(name = "website", nullable = true)
     private String website;
 
+    @Version
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
