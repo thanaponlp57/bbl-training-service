@@ -13,6 +13,7 @@ import com.thanapon.bbl_training_service.entity.UserEntity;
 public interface UserMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "password", ignore = true)
     UserEntity toEntity(UserCreateRequestDto dto);
 
     void updateEntityFromDto(UserUpdateRequestDto dto, @MappingTarget UserEntity entity);

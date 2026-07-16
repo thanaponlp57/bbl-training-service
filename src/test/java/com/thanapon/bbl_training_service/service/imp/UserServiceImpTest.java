@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
 import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
@@ -34,6 +36,9 @@ class UserServiceImpTest {
 
     @Spy
     private UserMapper userMapper = new UserMapperImpl();
+
+    @Spy
+    private PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @InjectMocks
     private UserServiceImp userServiceImp;
@@ -73,7 +78,7 @@ class UserServiceImpTest {
     @Test
     void createUser_shouldSaveAndReturnNewUser() {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "Leanne Graham", "Bret", "leanne@example.com", "1-770-736-8031", "hildegard.org");
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "1-770-736-8031", "hildegard.org");
         given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
             UserEntity saved = invocation.getArgument(0);
             saved.setId(1L);
@@ -84,6 +89,8 @@ class UserServiceImpTest {
 
         verify(userRepository).save(userEntityCaptor.capture());
         assertThat(userEntityCaptor.getValue().getUsername()).isEqualTo("Bret");
+        assertThat(userEntityCaptor.getValue().getPassword()).isNotEqualTo("password123");
+        assertThat(passwordEncoder.matches("password123", userEntityCaptor.getValue().getPassword())).isTrue();
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getUsername()).isEqualTo("Bret");
     }

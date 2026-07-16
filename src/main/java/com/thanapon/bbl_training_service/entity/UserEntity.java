@@ -4,7 +4,9 @@ import java.time.Instant;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -20,12 +22,16 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 @Entity
 
 // Hooks this entity into Spring Data JPA auditing (@EnableJpaAuditing in JpaAuditingConfig).
@@ -66,6 +72,11 @@ public class UserEntity {
     @Column(name = "website", nullable = true)
     private String website;
 
+    @JsonIgnore
+    @ToString.Exclude
+    @Column(name = "password", nullable = false)
+    private String password;
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
@@ -73,6 +84,14 @@ public class UserEntity {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @CreatedBy
+    @Column(name = "created_by_user_id", updatable = false)
+    private Long createdByUserId;
+
+    @LastModifiedBy
+    @Column(name = "updated_by_user_id")
+    private Long updatedByUserId;
 
     @Column(name = "deleted_at")
     private Instant deletedAt;

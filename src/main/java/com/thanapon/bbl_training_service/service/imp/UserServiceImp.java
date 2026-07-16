@@ -2,6 +2,7 @@ package com.thanapon.bbl_training_service.service.imp;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class UserServiceImp implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public List<UserResponseDto> getAllUsers() {
@@ -39,6 +41,7 @@ public class UserServiceImp implements UserService {
     @Override
     public UserResponseDto createUser(UserCreateRequestDto userCreateRequestDto) {
         final UserEntity userEntity = userMapper.toEntity(userCreateRequestDto);
+        userEntity.setPassword(passwordEncoder.encode(userCreateRequestDto.getPassword()));
 
         return userMapper.toResponseDto(userRepository.save(userEntity));
     }

@@ -22,6 +22,9 @@ public class UserCreateRequestDto {
     @Email(message = "email must be a valid email address")
     private final String email;
 
+    @NotBlank(message = "password must not be blank")
+    private final String password;
+
     private final String phone;
 
     private final String website;

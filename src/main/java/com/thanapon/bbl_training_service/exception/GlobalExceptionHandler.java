@@ -33,6 +33,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), null));
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiResponse<String>> handleInvalidCredentialsException(InvalidCredentialsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage(), null));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<String>> handleOptimisticLockingFailureException(ObjectOptimisticLockingFailureException ex) {
         return ResponseEntity

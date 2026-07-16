@@ -7,18 +7,40 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.thanapon.bbl_training_service.config.JpaAuditingConfig;
+import com.thanapon.bbl_training_service.config.SecurityAuditorAware;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import(JpaAuditingConfig.class)
+@Import({JpaAuditingConfig.class, UserRepositoryTest.SecurityAuditorAwareTestConfig.class})
 class UserRepositoryTest {
+
+    // JpaAuditingConfig wires @EnableJpaAuditing(auditorAwareRef = "securityAuditorAware"), which resolves
+    // its AuditorAware collaborator by bean *name*. In the real application SecurityAuditorAware is picked
+    // up by component scanning, which names it "securityAuditorAware" (default AnnotationBeanNameGenerator).
+    // Under @DataJpaTest, classes brought in via @Import on the test class are registered by Spring Boot's
+    // test context loader using a fully-qualified-class-name bean naming strategy instead, so
+    // @Import(SecurityAuditorAware.class) directly would register it as
+    // "com.thanapon.bbl_training_service.config.SecurityAuditorAware" and auditorAwareRef would fail to
+    // resolve. Defining it as an explicit @Bean method below pins the bean name to "securityAuditorAware"
+    // regardless of that import-naming behavior.
+    @TestConfiguration
+    static class SecurityAuditorAwareTestConfig {
+        @Bean
+        SecurityAuditorAware securityAuditorAware() {
+            return new SecurityAuditorAware();
+        }
+    }
 
     @Autowired
     private UserRepository userRepository;
@@ -31,6 +53,7 @@ class UserRepositoryTest {
         userEntity.setName("Leanne Graham");
         userEntity.setUsername(username);
         userEntity.setEmail(username + "@example.com");
+        userEntity.setPassword("hashed-password");
         return userRepository.save(userEntity);
     }
 
@@ -130,5 +153,28 @@ class UserRepositoryTest {
                 .setParameter(1, id)
                 .getSingleResult();
         assertThat(deletedAt).isNotNull();
+    }
+
+    @Test
+    void save_shouldSetCreatedByAndLastModifiedBy_whenAuthenticatedUserCreatesRow() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(7L, null, java.util.Collections.emptyList()));
+
+        try {
+            UserEntity persisted = persistUser("Bret");
+
+            assertThat(persisted.getCreatedByUserId()).isEqualTo(7L);
+            assertThat(persisted.getUpdatedByUserId()).isEqualTo(7L);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void save_shouldLeaveCreatedByNull_whenNoAuthenticatedUser() {
+        UserEntity persisted = persistUser("Bret");
+
+        assertThat(persisted.getCreatedByUserId()).isNull();
+        assertThat(persisted.getUpdatedByUserId()).isNull();
     }
 }
