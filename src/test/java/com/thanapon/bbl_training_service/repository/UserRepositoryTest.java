@@ -1,6 +1,7 @@
 package com.thanapon.bbl_training_service.repository;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,5 +110,25 @@ class UserRepositoryTest {
         UserEntity persisted = persistUser("Bret");
 
         assertThat(persisted.getCreatedAt()).isEqualTo(persisted.getUpdatedAt());
+    }
+
+    @Test
+    void delete_shouldSoftDelete_hidingUserFromQueriesButKeepingRow() {
+        UserEntity persisted = persistUser("Bret");
+        long id = persisted.getId();
+        entityManager.flush();
+
+        userRepository.delete(persisted);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(userRepository.findById(id)).isEmpty();
+        assertThat(userRepository.existsByUsername("Bret")).isFalse();
+
+        OffsetDateTime deletedAt = (OffsetDateTime) entityManager.getEntityManager()
+                .createNativeQuery("SELECT deleted_at FROM users WHERE id = ?")
+                .setParameter(1, id)
+                .getSingleResult();
+        assertThat(deletedAt).isNotNull();
     }
 }
