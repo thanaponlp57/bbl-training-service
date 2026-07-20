@@ -2,6 +2,9 @@ package com.thanapon.bbl_training_service.repository;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,16 +13,18 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.thanapon.bbl_training_service.config.JpaAuditingConfig;
 import com.thanapon.bbl_training_service.config.SecurityAuditorAware;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @Import({JpaAuditingConfig.class, UserRepositoryTest.SecurityAuditorAwareTestConfig.class})
@@ -47,6 +52,9 @@ class UserRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private UserEntity persistUser(String username) {
         UserEntity userEntity = new UserEntity();
@@ -85,23 +93,54 @@ class UserRepositoryTest {
     }
 
     @Test
-    void save_shouldThrowOptimisticLockingFailure_whenRowWasUpdatedSinceItWasRead() {
-        UserEntity persisted = persistUser("Bret");
-        entityManager.flush();
-        entityManager.clear();
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void findByIdWithLock_shouldBlockConcurrentTransaction_untilFirstTransactionCommits() throws InterruptedException {
+        // Uses a username distinct from the other tests' "Bret": this test disables the default
+        // @DataJpaTest rollback (see below), so the row it creates is actually committed and
+        // must not collide with rows other tests insert under their own rolled-back transactions.
+        UserEntity persisted = persistUser("BretLockTest");
+        long id = persisted.getId();
 
-        UserEntity firstRead = userRepository.findById(persisted.getId()).orElseThrow();
-        entityManager.detach(firstRead);
-        UserEntity secondRead = userRepository.findById(persisted.getId()).orElseThrow();
-        entityManager.detach(secondRead);
+        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+        CountDownLatch firstTxHoldsLock = new CountDownLatch(1);
+        CountDownLatch releaseFirstTx = new CountDownLatch(1);
+        AtomicLong secondTxAcquiredAtNanos = new AtomicLong();
 
-        firstRead.setName("Updated by first request");
-        userRepository.saveAndFlush(firstRead);
-        entityManager.clear();
+        Thread firstTx = new Thread(() -> txTemplate.executeWithoutResult(status -> {
+            userRepository.findByIdWithLock(id).orElseThrow();
+            firstTxHoldsLock.countDown();
+            awaitUpTo5Seconds(releaseFirstTx);
+        }));
 
-        secondRead.setName("Updated by second request");
-        assertThatThrownBy(() -> userRepository.saveAndFlush(secondRead))
-                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+        Thread secondTx = new Thread(() -> {
+            awaitUpTo5Seconds(firstTxHoldsLock);
+            txTemplate.executeWithoutResult(status -> {
+                userRepository.findByIdWithLock(id).orElseThrow();
+                secondTxAcquiredAtNanos.set(System.nanoTime());
+            });
+        });
+
+        firstTx.start();
+        assertThat(firstTxHoldsLock.await(5, TimeUnit.SECONDS)).isTrue();
+        secondTx.start();
+
+        // Give the second transaction time to attempt findByIdWithLock and start blocking on it.
+        Thread.sleep(300);
+        long releasedAtNanos = System.nanoTime();
+        releaseFirstTx.countDown();
+
+        firstTx.join(5000);
+        secondTx.join(5000);
+
+        assertThat(secondTxAcquiredAtNanos.get()).isGreaterThanOrEqualTo(releasedAtNanos);
+    }
+
+    private static void awaitUpTo5Seconds(CountDownLatch latch) {
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test

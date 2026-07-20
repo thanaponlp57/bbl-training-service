@@ -97,7 +97,7 @@ class UserServiceImpTest {
 
     @Test
     void updateUserById_shouldUpdateFieldsAndKeepId_whenUserExists() {
-        given(userRepository.findById(1L)).willReturn(Optional.of(existingUser()));
+        given(userRepository.findByIdWithLock(1L)).willReturn(Optional.of(existingUser()));
         given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
         UserUpdateRequestDto requestDto = new UserUpdateRequestDto(
                 "Leanne G. Updated", "Bret", "leanne.updated@example.com", "099-999-9999", "updated.org");
@@ -114,7 +114,7 @@ class UserServiceImpTest {
 
     @Test
     void updateUserById_shouldThrowNotFoundException_whenUserDoesNotExist() {
-        given(userRepository.findById(99L)).willReturn(Optional.empty());
+        given(userRepository.findByIdWithLock(99L)).willReturn(Optional.empty());
         UserUpdateRequestDto requestDto = new UserUpdateRequestDto(
                 "name", "username", "email@example.com", "phone", "website");
 

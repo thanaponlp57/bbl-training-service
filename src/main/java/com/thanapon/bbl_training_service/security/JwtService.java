@@ -22,14 +22,22 @@ import io.jsonwebtoken.Jwts;
 @Component
 public class JwtService {
 
+    private static final String TYPE_CLAIM = "type";
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
+
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
     private final long expirationMs;
+    private final long refreshExpirationMs;
+    private final String issuer;
 
     public JwtService(
             @Value("${jwt.private-key}") String privateKeyBase64,
             @Value("${jwt.public-key}") String publicKeyBase64,
-            @Value("${jwt.expiration-ms}") long expirationMs) {
+            @Value("${jwt.expiration-ms}") long expirationMs,
+            @Value("${jwt.refresh-expiration-ms}") long refreshExpirationMs,
+            @Value("${jwt.issuer}") String issuer) {
         if (privateKeyBase64 == null || privateKeyBase64.isBlank()
                 || publicKeyBase64 == null || publicKeyBase64.isBlank()) {
             // No persistent key pair configured (JWT_PRIVATE_KEY/JWT_PUBLIC_KEY env vars) -
@@ -43,15 +51,27 @@ public class JwtService {
             this.publicKey = decodePublicKey(publicKeyBase64);
         }
         this.expirationMs = expirationMs;
+        this.refreshExpirationMs = refreshExpirationMs;
+        this.issuer = issuer;
     }
 
-    public String generateToken(long userId, String username) {
+    public String generateAccessToken(long userId, String username) {
+        return buildToken(userId, username, TYPE_ACCESS, expirationMs);
+    }
+
+    public String generateRefreshToken(long userId, String username) {
+        return buildToken(userId, username, TYPE_REFRESH, refreshExpirationMs);
+    }
+
+    private String buildToken(long userId, String username, String type, long ttlMs) {
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + expirationMs);
+        Date expiry = new Date(now.getTime() + ttlMs);
 
         return Jwts.builder()
+                .issuer(issuer)
                 .subject(String.valueOf(userId))
                 .claim("username", username)
+                .claim(TYPE_CLAIM, type)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(privateKey, Jwts.SIG.RS256)
@@ -73,6 +93,22 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public boolean isAccessToken(String token) {
+        return TYPE_ACCESS.equals(parseClaims(token).get(TYPE_CLAIM, String.class));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return TYPE_REFRESH.equals(parseClaims(token).get(TYPE_CLAIM, String.class));
+    }
+
+    public long getExpirationMs() {
+        return expirationMs;
+    }
+
+    public long getRefreshExpirationMs() {
+        return refreshExpirationMs;
     }
 
     private Claims parseClaims(String token) {

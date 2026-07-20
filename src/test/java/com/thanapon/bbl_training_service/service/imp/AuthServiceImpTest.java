@@ -12,7 +12,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
-import com.thanapon.bbl_training_service.dto.response.LoginResponseDto;
+import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
+import com.thanapon.bbl_training_service.dto.response.AuthResponseDto;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.InvalidCredentialsException;
 import com.thanapon.bbl_training_service.repository.UserRepository;
@@ -46,15 +47,21 @@ class AuthServiceImpTest {
     }
 
     @Test
-    void login_shouldReturnToken_whenCredentialsAreValid() {
+    void login_shouldReturnBothTokens_whenCredentialsAreValid() {
         UserEntity user = userWithPassword("password123");
         given(userRepository.findByUsername("Bret")).willReturn(Optional.of(user));
-        given(jwtService.generateToken(1L, "Bret")).willReturn("signed-jwt-token");
+        given(jwtService.generateAccessToken(1L, "Bret")).willReturn("signed-access-token");
+        given(jwtService.generateRefreshToken(1L, "Bret")).willReturn("signed-refresh-token");
+        given(jwtService.getExpirationMs()).willReturn(1_800_000L);
+        given(jwtService.getRefreshExpirationMs()).willReturn(3_600_000L);
         LoginRequestDto requestDto = new LoginRequestDto("Bret", "password123");
 
-        LoginResponseDto result = authServiceImp.login(requestDto);
+        AuthResponseDto result = authServiceImp.login(requestDto);
 
-        assertThat(result.getToken()).isEqualTo("signed-jwt-token");
+        assertThat(result.getAccessToken()).isEqualTo("signed-access-token");
+        assertThat(result.getRefreshToken()).isEqualTo("signed-refresh-token");
+        assertThat(result.getExpiresIn()).isEqualTo(1_800L);
+        assertThat(result.getRefreshExpiresIn()).isEqualTo(3_600L);
     }
 
     @Test
@@ -73,6 +80,58 @@ class AuthServiceImpTest {
         LoginRequestDto requestDto = new LoginRequestDto("unknown", "password123");
 
         assertThatThrownBy(() -> authServiceImp.login(requestDto))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void refresh_shouldReturnNewTokenPair_whenRefreshTokenIsValid() {
+        UserEntity user = userWithPassword("password123");
+        given(jwtService.isTokenValid("old-refresh-token")).willReturn(true);
+        given(jwtService.isRefreshToken("old-refresh-token")).willReturn(true);
+        given(jwtService.extractUserId("old-refresh-token")).willReturn(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(jwtService.generateAccessToken(1L, "Bret")).willReturn("new-access-token");
+        given(jwtService.generateRefreshToken(1L, "Bret")).willReturn("new-refresh-token");
+        given(jwtService.getExpirationMs()).willReturn(1_800_000L);
+        given(jwtService.getRefreshExpirationMs()).willReturn(3_600_000L);
+        RefreshRequestDto requestDto = new RefreshRequestDto("old-refresh-token");
+
+        AuthResponseDto result = authServiceImp.refresh(requestDto);
+
+        assertThat(result.getAccessToken()).isEqualTo("new-access-token");
+        assertThat(result.getRefreshToken()).isEqualTo("new-refresh-token");
+        assertThat(result.getExpiresIn()).isEqualTo(1_800L);
+        assertThat(result.getRefreshExpiresIn()).isEqualTo(3_600L);
+    }
+
+    @Test
+    void refresh_shouldThrowInvalidCredentialsException_whenTokenIsInvalidOrExpired() {
+        given(jwtService.isTokenValid("garbage")).willReturn(false);
+        RefreshRequestDto requestDto = new RefreshRequestDto("garbage");
+
+        assertThatThrownBy(() -> authServiceImp.refresh(requestDto))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void refresh_shouldThrowInvalidCredentialsException_whenTokenIsAnAccessTokenNotARefreshToken() {
+        given(jwtService.isTokenValid("access-token")).willReturn(true);
+        given(jwtService.isRefreshToken("access-token")).willReturn(false);
+        RefreshRequestDto requestDto = new RefreshRequestDto("access-token");
+
+        assertThatThrownBy(() -> authServiceImp.refresh(requestDto))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void refresh_shouldThrowInvalidCredentialsException_whenUserNoLongerExists() {
+        given(jwtService.isTokenValid("old-refresh-token")).willReturn(true);
+        given(jwtService.isRefreshToken("old-refresh-token")).willReturn(true);
+        given(jwtService.extractUserId("old-refresh-token")).willReturn(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.empty());
+        RefreshRequestDto requestDto = new RefreshRequestDto("old-refresh-token");
+
+        assertThatThrownBy(() -> authServiceImp.refresh(requestDto))
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 }

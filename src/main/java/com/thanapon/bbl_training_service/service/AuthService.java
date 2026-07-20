@@ -1,8 +1,11 @@
 package com.thanapon.bbl_training_service.service;
 
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
-import com.thanapon.bbl_training_service.dto.response.LoginResponseDto;
+import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
+import com.thanapon.bbl_training_service.dto.response.AuthResponseDto;
 
 public interface AuthService {
-    LoginResponseDto login(LoginRequestDto loginRequestDto);
+    AuthResponseDto login(LoginRequestDto loginRequestDto);
+
+    AuthResponseDto refresh(RefreshRequestDto refreshRequestDto);
 }

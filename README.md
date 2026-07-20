@@ -46,7 +46,8 @@ On first startup (empty database), `DataSeeder` creates an admin account for loc
 | `server.port`          | `8000`              | HTTP port |
 | `JWT_PRIVATE_KEY`      | *(none)*            | Base64 PKCS8 DER RSA private key. If unset, a key pair is generated in memory on startup (fine for local dev, but tokens won't survive a restart or work across multiple instances). |
 | `JWT_PUBLIC_KEY`       | *(none)*            | Base64 X509 DER RSA public key, paired with `JWT_PRIVATE_KEY`. |
-| `JWT_EXPIRATION_MS`    | `3600000` (1 hour)  | JWT token lifetime in milliseconds. |
+| `JWT_EXPIRATION_MS`    | `1800000` (30 min)  | Access token lifetime in milliseconds. |
+| `JWT_REFRESH_EXPIRATION_MS` | `3600000` (1 hour) | Refresh token lifetime in milliseconds. Sliding: reset on every successful `/auth/refresh` call. |
 
 Generate a persistent key pair with:
 
@@ -58,7 +59,8 @@ openssl rsa -in private.pem -pubout -outform DER | base64 | tr -d '\n'          
 
 ## Authentication
 
-All endpoints except `POST /auth/login` and the H2 console require a JWT bearer token.
+All endpoints except `POST /auth/login`, `POST /auth/refresh`, and the H2 console require a JWT
+bearer access token.
 
 ```
 POST /auth/login
@@ -66,8 +68,25 @@ Authorization: none
 Body: { "username": "admin", "password": "admin123" }
 ```
 
-Returns `{ "status": "success", "data": { "token": "<jwt>" } }`. Send the token on subsequent
-requests as `Authorization: Bearer <jwt>`.
+Returns `{ "status": "success", "data": { "access_token": "<jwt>", "refresh_token": "<jwt>", "expires_in": 1800, "refresh_expires_in": 3600 } }`.
+Send the access token on subsequent requests as `Authorization: Bearer <access_token>`.
+
+When the access token expires, exchange the refresh token for a new pair (sliding expiration —
+the new refresh token gets a fresh 60-minute window):
+
+```
+POST /auth/refresh
+Authorization: none
+Body: { "refresh_token": "<refresh_token>" }
+```
+
+Returns the same shape as `/auth/login`. A refresh token cannot be used as a bearer token on
+other endpoints, and an access token cannot be used at `/auth/refresh`.
+
+Note: tokens issued before this change (they lack a `type` claim) are rejected by the updated
+filter/refresh logic and require re-login. This only matters if a persistent `JWT_PRIVATE_KEY`/
+`JWT_PUBLIC_KEY` is configured — the default in-memory key pair already invalidates all tokens on
+every restart, so it's moot for local dev.
 
 ## API Endpoints
 
@@ -76,6 +95,7 @@ Base URL: `http://localhost:8000/bbl-training-service`
 | Method   | Path              | Auth   | Description |
 |---|---|---|---|
 | `POST`   | `/auth/login`     | Public | Authenticate and receive a JWT. |
+| `POST`   | `/auth/refresh`   | Public | Exchange a refresh token for a new access/refresh token pair. |
 | `GET`    | `/users`          | Bearer | Retrieve a list of all users. |
 | `GET`    | `/users/{userId}` | Bearer | Retrieve details of a specific user. |
 | `POST`   | `/users`          | Bearer | Create a new user (username must be unique). |

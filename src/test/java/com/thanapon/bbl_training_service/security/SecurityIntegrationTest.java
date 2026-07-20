@@ -8,10 +8,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
+import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.repository.UserRepository;
 
@@ -52,7 +55,7 @@ class SecurityIntegrationTest {
 
     @Test
     void getUsers_shouldReturnOk_whenTokenIsValid() throws Exception {
-        String token = jwtService.generateToken(1L, "Bret");
+        String token = jwtService.generateAccessToken(1L, "Bret");
 
         mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk());
@@ -73,5 +76,42 @@ class SecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void refresh_shouldReturnNewAccessTokenThatWorksOnProtectedEndpoint() throws Exception {
+        UserEntity user = new UserEntity();
+        user.setName("Leanne Graham");
+        user.setUsername("Bret");
+        user.setEmail("leanne@example.com");
+        user.setPassword(passwordEncoder.encode("password123"));
+        userRepository.save(user);
+        long userId = user.getId();
+
+        String refreshToken = jwtService.generateRefreshToken(userId, "Bret");
+        RefreshRequestDto requestDto = new RefreshRequestDto(refreshToken);
+
+        MvcResult result = mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode responseBody = objectMapper.readTree(result.getResponse().getContentAsString());
+        String accessToken = responseBody.path("data").path("access_token").asText();
+
+        mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void refresh_shouldReturnUnauthorized_whenTokenIsAnAccessTokenNotARefreshToken() throws Exception {
+        String accessToken = jwtService.generateAccessToken(1L, "Bret");
+        RefreshRequestDto requestDto = new RefreshRequestDto(accessToken);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -8,8 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
+import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
 import com.thanapon.bbl_training_service.dto.response.ApiResponse;
-import com.thanapon.bbl_training_service.dto.response.LoginResponseDto;
+import com.thanapon.bbl_training_service.dto.response.AuthResponseDto;
 import com.thanapon.bbl_training_service.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -23,11 +24,20 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponseDto>> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
-        LoginResponseDto loginResponseDto = authService.login(loginRequestDto);
+    public ResponseEntity<ApiResponse<AuthResponseDto>> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
+        AuthResponseDto authResponseDto = authService.login(loginRequestDto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.success("Login successful", loginResponseDto));
+                .body(ApiResponse.success("Login successful", authResponseDto));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponseDto>> refresh(@Valid @RequestBody RefreshRequestDto refreshRequestDto) {
+        AuthResponseDto authResponseDto = authService.refresh(refreshRequestDto);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.success("Token refresh successful", authResponseDto));
     }
 }

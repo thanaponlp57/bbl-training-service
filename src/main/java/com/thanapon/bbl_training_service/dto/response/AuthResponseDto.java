@@ -8,7 +8,10 @@ import tools.jackson.databind.annotation.JsonNaming;
 @Getter
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class LoginResponseDto {
+public class AuthResponseDto {
 
-    private final String token;
+    private final String accessToken;
+    private final String refreshToken;
+    private final long expiresIn;
+    private final long refreshExpiresIn;
 }
