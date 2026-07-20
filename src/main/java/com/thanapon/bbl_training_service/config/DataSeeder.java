@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.repository.UserRepository;
 
@@ -27,6 +28,7 @@ public class DataSeeder implements CommandLineRunner {
         admin.setUsername("admin");
         admin.setEmail("admin@example.com");
         admin.setPassword(passwordEncoder.encode("admin123"));
+        admin.setRole(Role.ADMIN);
         userRepository.save(admin);
     }
 }

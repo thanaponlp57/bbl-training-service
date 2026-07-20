@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +18,7 @@ import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
 import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.ApiResponse;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.service.UserService;
 
 import jakarta.validation.Valid;
@@ -72,6 +74,7 @@ public class UserController {
                 .body(ApiResponse.success("Update details of an existing user.", userResponseDto));
     }
 
+    @PreAuthorize("hasRole(T(Role).ADMIN.name())")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUserById(@PathVariable long id) {
 

@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.thanapon.bbl_training_service.config.JpaAuditingConfig;
 import com.thanapon.bbl_training_service.config.SecurityAuditorAware;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +63,7 @@ class UserRepositoryTest {
         userEntity.setUsername(username);
         userEntity.setEmail(username + "@example.com");
         userEntity.setPassword("hashed-password");
+        userEntity.setRole(Role.USER);
         return userRepository.save(userEntity);
     }
 

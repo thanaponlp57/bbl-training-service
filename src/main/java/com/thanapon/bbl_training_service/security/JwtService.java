@@ -15,8 +15,11 @@ import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.thanapon.bbl_training_service.entity.Role;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 
 @Component
@@ -25,6 +28,7 @@ public class JwtService {
     private static final String TYPE_CLAIM = "type";
     private static final String TYPE_ACCESS = "access";
     private static final String TYPE_REFRESH = "refresh";
+    private static final String ROLE_CLAIM = "role";
 
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
@@ -55,23 +59,29 @@ public class JwtService {
         this.issuer = issuer;
     }
 
-    public String generateAccessToken(long userId, String username) {
-        return buildToken(userId, username, TYPE_ACCESS, expirationMs);
+    public String generateAccessToken(long userId, String username, Role role) {
+        return buildToken(userId, username, TYPE_ACCESS, expirationMs, role);
     }
 
     public String generateRefreshToken(long userId, String username) {
-        return buildToken(userId, username, TYPE_REFRESH, refreshExpirationMs);
+        return buildToken(userId, username, TYPE_REFRESH, refreshExpirationMs, null);
     }
 
-    private String buildToken(long userId, String username, String type, long ttlMs) {
+    private String buildToken(long userId, String username, String type, long ttlMs, Role role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + ttlMs);
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .issuer(issuer)
                 .subject(String.valueOf(userId))
                 .claim("username", username)
-                .claim(TYPE_CLAIM, type)
+                .claim(TYPE_CLAIM, type);
+
+        if (role != null) {
+            builder.claim(ROLE_CLAIM, role.getValue());
+        }
+
+        return builder
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(privateKey, Jwts.SIG.RS256)
@@ -84,6 +94,10 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return parseClaims(token).get("username", String.class);
+    }
+
+    public String extractRole(String token) {
+        return parseClaims(token).get(ROLE_CLAIM, String.class);
     }
 
     public boolean isTokenValid(String token) {

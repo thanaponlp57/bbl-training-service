@@ -60,7 +60,7 @@ public class AuthServiceImp implements AuthService {
     }
 
     private AuthResponseDto issueTokenPair(UserEntity user) {
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername());
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getRole());
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getUsername());
         long expiresIn = jwtService.getExpirationMs() / 1000;
         long refreshExpiresIn = jwtService.getRefreshExpirationMs() / 1000;

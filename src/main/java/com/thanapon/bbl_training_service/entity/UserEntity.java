@@ -77,6 +77,9 @@ public class UserEntity {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "role", nullable = false)
+    private Role role;
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;

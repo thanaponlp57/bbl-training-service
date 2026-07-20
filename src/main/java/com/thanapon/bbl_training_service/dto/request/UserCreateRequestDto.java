@@ -1,6 +1,7 @@
 package com.thanapon.bbl_training_service.dto.request;
 
 import com.thanapon.bbl_training_service.validation.UniqueUsername;
+import com.thanapon.bbl_training_service.validation.ValidRole;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -24,6 +25,10 @@ public class UserCreateRequestDto {
 
     @NotBlank(message = "password must not be blank")
     private final String password;
+
+    @NotBlank(message = "role must not be blank")
+    @ValidRole
+    private final String role;
 
     private final String phone;
 

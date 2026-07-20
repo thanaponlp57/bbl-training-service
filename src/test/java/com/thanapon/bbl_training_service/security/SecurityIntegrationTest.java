@@ -15,9 +15,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
 import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.repository.UserRepository;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,9 +57,49 @@ class SecurityIntegrationTest {
 
     @Test
     void getUsers_shouldReturnOk_whenTokenIsValid() throws Exception {
-        String token = jwtService.generateAccessToken(1L, "Bret");
+        String token = jwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void deleteUser_shouldReturnForbidden_whenTokenBelongsToNonAdminUser() throws Exception {
+        UserEntity user = new UserEntity();
+        user.setName("Leanne Graham");
+        user.setUsername("Bret");
+        user.setEmail("leanne@example.com");
+        user.setPassword(passwordEncoder.encode("password123"));
+        user.setRole(Role.USER);
+        userRepository.save(user);
+
+        String token = jwtService.generateAccessToken(user.getId(), "Bret", Role.USER);
+
+        mockMvc.perform(delete("/users/" + user.getId()).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteUser_shouldReturnOk_whenTokenBelongsToAdminUser() throws Exception {
+        UserEntity admin = new UserEntity();
+        admin.setName("Admin User");
+        admin.setUsername("test-admin");
+        admin.setEmail("test-admin@example.com");
+        admin.setPassword(passwordEncoder.encode("password123"));
+        admin.setRole(Role.ADMIN);
+        userRepository.save(admin);
+
+        UserEntity targetUser = new UserEntity();
+        targetUser.setName("Leanne Graham");
+        targetUser.setUsername("Bret");
+        targetUser.setEmail("leanne@example.com");
+        targetUser.setPassword(passwordEncoder.encode("password123"));
+        targetUser.setRole(Role.USER);
+        userRepository.save(targetUser);
+
+        String token = jwtService.generateAccessToken(admin.getId(), "test-admin", Role.ADMIN);
+
+        mockMvc.perform(delete("/users/" + targetUser.getId()).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk());
     }
 
@@ -68,6 +110,7 @@ class SecurityIntegrationTest {
         user.setUsername("Bret");
         user.setEmail("leanne@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
+        user.setRole(Role.USER);
         userRepository.save(user);
 
         LoginRequestDto requestDto = new LoginRequestDto("Bret", "password123");
@@ -85,6 +128,7 @@ class SecurityIntegrationTest {
         user.setUsername("Bret");
         user.setEmail("leanne@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
+        user.setRole(Role.USER);
         userRepository.save(user);
         long userId = user.getId();
 
@@ -106,7 +150,7 @@ class SecurityIntegrationTest {
 
     @Test
     void refresh_shouldReturnUnauthorized_whenTokenIsAnAccessTokenNotARefreshToken() throws Exception {
-        String accessToken = jwtService.generateAccessToken(1L, "Bret");
+        String accessToken = jwtService.generateAccessToken(1L, "Bret", Role.USER);
         RefreshRequestDto requestDto = new RefreshRequestDto(accessToken);
 
         mockMvc.perform(post("/auth/refresh")

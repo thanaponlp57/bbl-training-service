@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
 import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.NotFoundException;
 import com.thanapon.bbl_training_service.mapper.UserMapper;
@@ -42,6 +43,7 @@ public class UserServiceImp implements UserService {
     public UserResponseDto createUser(UserCreateRequestDto userCreateRequestDto) {
         final UserEntity userEntity = userMapper.toEntity(userCreateRequestDto);
         userEntity.setPassword(passwordEncoder.encode(userCreateRequestDto.getPassword()));
+        userEntity.setRole(Role.fromValue(userCreateRequestDto.getRole()).orElseThrow());
 
         return userMapper.toResponseDto(userRepository.save(userEntity));
     }

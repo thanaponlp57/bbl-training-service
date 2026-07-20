@@ -49,7 +49,7 @@ class UserControllerTest {
     @Test
     void createUser_shouldReturnBadRequest_whenNameIsBlank() throws Exception {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "", "Bret", "leanne@example.com", "password123", "1-770-736-8031", "hildegard.org");
+                "", "Bret", "leanne@example.com", "password123", "user", "1-770-736-8031", "hildegard.org");
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,7 +64,7 @@ class UserControllerTest {
     @Test
     void createUser_shouldReturnBadRequest_whenUserNameIsBlank() throws Exception {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "Leanne Graham", "", "leanne@example.com", "password123", "1-770-736-8031", "hildegard.org");
+                "Leanne Graham", "", "leanne@example.com", "password123", "user", "1-770-736-8031", "hildegard.org");
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ class UserControllerTest {
     @Test
     void createUser_shouldReturnBadRequest_whenEmailIsInvalid() throws Exception {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "Leanne Graham", "Bret", "not-an-email", "password123", "1-770-736-8031", "hildegard.org");
+                "Leanne Graham", "Bret", "not-an-email", "password123", "user", "1-770-736-8031", "hildegard.org");
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -91,9 +91,37 @@ class UserControllerTest {
     }
 
     @Test
+    void createUser_shouldReturnBadRequest_whenRoleIsBlank() throws Exception {
+        UserCreateRequestDto requestDto = new UserCreateRequestDto(
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "", "1-770-736-8031", "hildegard.org");
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error[?(@.field == 'role')]").exists());
+
+        verify(userService, never()).createUser(any());
+    }
+
+    @Test
+    void createUser_shouldReturnBadRequest_whenRoleIsNotAKnownEnumValue() throws Exception {
+        UserCreateRequestDto requestDto = new UserCreateRequestDto(
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "manager", "1-770-736-8031", "hildegard.org");
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error[?(@.field == 'role')]").exists());
+
+        verify(userService, never()).createUser(any());
+    }
+
+    @Test
     void createUser_shouldReturnBadRequest_whenUsernameAlreadyExists() throws Exception {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "Leanne Graham", "Bret", "leanne@example.com", "password123", "1-770-736-8031", "hildegard.org");
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "user", "1-770-736-8031", "hildegard.org");
         given(userRepository.existsByUsername("Bret")).willReturn(true);
 
         mockMvc.perform(post("/users")

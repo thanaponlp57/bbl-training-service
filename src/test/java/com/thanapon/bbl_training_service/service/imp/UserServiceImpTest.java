@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.thanapon.bbl_training_service.dto.request.UserCreateRequestDto;
 import com.thanapon.bbl_training_service.dto.request.UserUpdateRequestDto;
 import com.thanapon.bbl_training_service.dto.response.UserResponseDto;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.NotFoundException;
 import com.thanapon.bbl_training_service.mapper.UserMapper;
@@ -78,7 +79,7 @@ class UserServiceImpTest {
     @Test
     void createUser_shouldSaveAndReturnNewUser() {
         UserCreateRequestDto requestDto = new UserCreateRequestDto(
-                "Leanne Graham", "Bret", "leanne@example.com", "password123", "1-770-736-8031", "hildegard.org");
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "user", "1-770-736-8031", "hildegard.org");
         given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
             UserEntity saved = invocation.getArgument(0);
             saved.setId(1L);
@@ -93,6 +94,30 @@ class UserServiceImpTest {
         assertThat(passwordEncoder.matches("password123", userEntityCaptor.getValue().getPassword())).isTrue();
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getUsername()).isEqualTo("Bret");
+    }
+
+    @Test
+    void createUser_shouldSetRoleFromRequestedValue_whenRoleIsAdmin() {
+        UserCreateRequestDto requestDto = new UserCreateRequestDto(
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "admin", "1-770-736-8031", "hildegard.org");
+        given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        userServiceImp.createUser(requestDto);
+
+        verify(userRepository).save(userEntityCaptor.capture());
+        assertThat(userEntityCaptor.getValue().getRole()).isEqualTo(Role.ADMIN);
+    }
+
+    @Test
+    void createUser_shouldSetRoleFromRequestedValue_whenRoleIsUser() {
+        UserCreateRequestDto requestDto = new UserCreateRequestDto(
+                "Leanne Graham", "Bret", "leanne@example.com", "password123", "user", "1-770-736-8031", "hildegard.org");
+        given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        userServiceImp.createUser(requestDto);
+
+        verify(userRepository).save(userEntityCaptor.capture());
+        assertThat(userEntityCaptor.getValue().getRole()).isEqualTo(Role.USER);
     }
 
     @Test

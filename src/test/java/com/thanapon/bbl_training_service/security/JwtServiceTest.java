@@ -7,6 +7,8 @@ import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
 
+import com.thanapon.bbl_training_service.entity.Role;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtServiceTest {
@@ -17,7 +19,7 @@ class JwtServiceTest {
 
     @Test
     void generateAccessToken_shouldProduceTokenContainingUserIdAndUsername() {
-        String token = jwtService.generateAccessToken(1L, "Bret");
+        String token = jwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(jwtService.extractUserId(token)).isEqualTo(1L);
         assertThat(jwtService.extractUsername(token)).isEqualTo("Bret");
@@ -25,10 +27,24 @@ class JwtServiceTest {
 
     @Test
     void generateAccessToken_shouldBeAnAccessTokenNotARefreshToken() {
-        String token = jwtService.generateAccessToken(1L, "Bret");
+        String token = jwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(jwtService.isAccessToken(token)).isTrue();
         assertThat(jwtService.isRefreshToken(token)).isFalse();
+    }
+
+    @Test
+    void generateAccessToken_shouldProduceTokenContainingRole() {
+        String token = jwtService.generateAccessToken(1L, "Bret", Role.ADMIN);
+
+        assertThat(jwtService.extractRole(token)).isEqualTo("admin");
+    }
+
+    @Test
+    void generateRefreshToken_shouldNotContainARole() {
+        String token = jwtService.generateRefreshToken(1L, "Bret");
+
+        assertThat(jwtService.extractRole(token)).isNull();
     }
 
     @Test
@@ -49,7 +65,7 @@ class JwtServiceTest {
 
     @Test
     void isTokenValid_shouldReturnTrue_forFreshlyGeneratedAccessToken() {
-        String token = jwtService.generateAccessToken(1L, "Bret");
+        String token = jwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(jwtService.isTokenValid(token)).isTrue();
     }
@@ -71,7 +87,7 @@ class JwtServiceTest {
         // No keys configured on either instance, so each one generates its own
         // independent ephemeral RSA key pair - exactly what's needed here.
         JwtService otherJwtService = new JwtService("", "", 3_600_000L, 7_200_000L, ISSUER);
-        String token = otherJwtService.generateAccessToken(1L, "Bret");
+        String token = otherJwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(jwtService.isTokenValid(token)).isFalse();
     }
@@ -79,7 +95,7 @@ class JwtServiceTest {
     @Test
     void isTokenValid_shouldReturnFalse_forExpiredAccessToken() {
         JwtService expiredJwtService = new JwtService("", "", -1_000L, 7_200_000L, ISSUER);
-        String token = expiredJwtService.generateAccessToken(1L, "Bret");
+        String token = expiredJwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(expiredJwtService.isTokenValid(token)).isFalse();
     }
@@ -101,7 +117,7 @@ class JwtServiceTest {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
 
         JwtService configuredJwtService = new JwtService(privateKeyBase64, publicKeyBase64, 3_600_000L, 7_200_000L, ISSUER);
-        String token = configuredJwtService.generateAccessToken(1L, "Bret");
+        String token = configuredJwtService.generateAccessToken(1L, "Bret", Role.USER);
 
         assertThat(configuredJwtService.isTokenValid(token)).isTrue();
         assertThat(configuredJwtService.extractUserId(token)).isEqualTo(1L);

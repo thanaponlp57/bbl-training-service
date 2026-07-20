@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.thanapon.bbl_training_service.dto.request.LoginRequestDto;
 import com.thanapon.bbl_training_service.dto.request.RefreshRequestDto;
 import com.thanapon.bbl_training_service.dto.response.AuthResponseDto;
+import com.thanapon.bbl_training_service.entity.Role;
 import com.thanapon.bbl_training_service.entity.UserEntity;
 import com.thanapon.bbl_training_service.exception.InvalidCredentialsException;
 import com.thanapon.bbl_training_service.repository.UserRepository;
@@ -43,6 +44,7 @@ class AuthServiceImpTest {
         user.setId(1L);
         user.setUsername("Bret");
         user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setRole(Role.USER);
         return user;
     }
 
@@ -50,7 +52,7 @@ class AuthServiceImpTest {
     void login_shouldReturnBothTokens_whenCredentialsAreValid() {
         UserEntity user = userWithPassword("password123");
         given(userRepository.findByUsername("Bret")).willReturn(Optional.of(user));
-        given(jwtService.generateAccessToken(1L, "Bret")).willReturn("signed-access-token");
+        given(jwtService.generateAccessToken(1L, "Bret", Role.USER)).willReturn("signed-access-token");
         given(jwtService.generateRefreshToken(1L, "Bret")).willReturn("signed-refresh-token");
         given(jwtService.getExpirationMs()).willReturn(1_800_000L);
         given(jwtService.getRefreshExpirationMs()).willReturn(3_600_000L);
@@ -90,7 +92,7 @@ class AuthServiceImpTest {
         given(jwtService.isRefreshToken("old-refresh-token")).willReturn(true);
         given(jwtService.extractUserId("old-refresh-token")).willReturn(1L);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
-        given(jwtService.generateAccessToken(1L, "Bret")).willReturn("new-access-token");
+        given(jwtService.generateAccessToken(1L, "Bret", Role.USER)).willReturn("new-access-token");
         given(jwtService.generateRefreshToken(1L, "Bret")).willReturn("new-refresh-token");
         given(jwtService.getExpirationMs()).willReturn(1_800_000L);
         given(jwtService.getRefreshExpirationMs()).willReturn(3_600_000L);
